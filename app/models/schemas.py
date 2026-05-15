@@ -3,18 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, EmailStr
-
-
-class ChannelType(str, Enum):
-    """Supported notification channels.
-
-    Open/Closed Principle: Adding a new channel only requires extending this enum
-    and creating a new provider. No existing code needs modification.
-    """
-    EMAIL = "email"
-    SMS = "sms"
-    WHATSAPP = "whatsapp"
+from pydantic import BaseModel, Field
 
 
 class NotificationPriority(str, Enum):
@@ -36,10 +25,14 @@ class Notification(BaseModel):
 
     Single Responsibility Principle: This model only defines the structure
     of a notification. Formatting logic lives in the providers.
+
+    Open/Closed Principle: Channel is a plain string so adding a new channel
+    requires zero changes to this model. Validation happens at the service layer
+    against the provider registry.
     """
     recipient_id: str = Field(..., description="Target user identifier")
     recipient_address: str = Field(..., description="Email, phone number, etc.")
-    channel: ChannelType
+    channel: str = Field(..., description="Notification channel (e.g. email, sms, whatsapp)")
     subject: str | None = Field(None, description="Required for email")
     body: str = Field(..., min_length=1)
     priority: NotificationPriority = NotificationPriority.NORMAL
@@ -60,7 +53,7 @@ class NotificationResult(BaseModel):
 class NotificationRequest(BaseModel):
     """Incoming API request to send a notification."""
     user_id: str
-    channel: ChannelType
+    channel: str = Field(..., description="Notification channel (e.g. email, sms, whatsapp)")
     subject: str | None = None
     body: str = Field(..., min_length=1)
     priority: NotificationPriority = NotificationPriority.NORMAL

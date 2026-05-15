@@ -1,6 +1,6 @@
 """Core abstractions and interfaces following the Interface Segregation Principle."""
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Type
 
 from app.models.schemas import Notification, NotificationResult
 
@@ -62,4 +62,32 @@ class IUserPreferenceRepository(ABC):
     @abstractmethod
     async def is_channel_enabled(self, user_id: str, channel: str) -> bool:
         """Check if a specific notification channel is enabled for the user."""
+        ...
+
+    @abstractmethod
+    async def get_contact_address(self, user_id: str, channel: str) -> str:
+        """Get the appropriate contact address for a given channel."""
+        ...
+
+
+class IProviderRegistry(ABC):
+    """Abstraction for the provider registry.
+
+    Dependency Inversion Principle: High-level services depend on this
+    abstraction rather than a concrete global singleton.
+    """
+
+    @abstractmethod
+    def register(self, provider_class: Type["NotificationProvider"]) -> None:
+        """Register a provider class."""
+        ...
+
+    @abstractmethod
+    def get_provider(self, channel: str) -> "NotificationProvider":
+        """Return a provider instance for the given channel."""
+        ...
+
+    @abstractmethod
+    def list_channels(self) -> list[str]:
+        """Return all registered channel names."""
         ...

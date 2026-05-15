@@ -1,17 +1,17 @@
-"""FastAPI application entry point."""
+"""FastAPI application entry point.
+
+Single Responsibility Principle: This module is solely responsible for
+assembling the application — wiring routers, exception handlers, and
+lifespan events. Each concern lives in its own module.
+"""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 
+from app.api.exception_handlers import register_exception_handlers
+from app.api.health import router as health_router
 from app.api.routes import router as notification_router
-from app.core.exceptions import (
-    ChannelDisabledException,
-    NotificationException,
-    ProviderException,
-    UserNotFoundException
-)
-from app.providers import provider_registry  # noqa: F401 - triggers registration
+from app.providers import provider_registry  # noqa: F401 — triggers auto-discovery
 
 
 @asynccontextmanager
@@ -32,49 +32,7 @@ app = FastAPI(
 
 # Register routes
 app.include_router(notification_router)
+app.include_router(health_router)
 
-
-# ───────────────────────────────────────────────
-# Global Exception Handlers
-# ───────────────────────────────────────────────
-
-@app.exception_handler(UserNotFoundException)
-async def user_not_found_handler(request: Request, exc: UserNotFoundException):
-    return JSONResponse(
-        status_code=status.HTTP_404_NOT_FOUND,
-        content={"detail": str(exc), "error_code": "USER_NOT_FOUND"}
-    )
-
-
-@app.exception_handler(ChannelDisabledException)
-async def channel_disabled_handler(request: Request, exc: ChannelDisabledException):
-    return JSONResponse(
-        status_code=status.HTTP_403_FORBIDDEN,
-        content={"detail": str(exc), "error_code": "CHANNEL_DISABLED"}
-    )
-
-
-@app.exception_handler(ProviderException)
-async def provider_exception_handler(request: Request, exc: ProviderException):
-    return JSONResponse(
-        status_code=status.HTTP_502_BAD_GATEWAY,
-        content={
-            "detail": str(exc),
-            "error_code": "PROVIDER_FAILURE",
-            "provider": exc.provider_name
-        }
-    )
-
-
-@app.exception_handler(NotificationException)
-async def generic_notification_handler(request: Request, exc: NotificationException):
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": str(exc), "error_code": "NOTIFICATION_ERROR"}
-    )
-
-
-@app.get("/health", tags=["Health"])
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "channels": provider_registry.list_channels()}
+# Register exception handlers
+register_exception_handlers(app)

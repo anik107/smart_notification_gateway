@@ -4,9 +4,11 @@ from datetime import datetime
 
 from app.core.exceptions import ProviderException
 from app.core.interfaces import NotificationProvider, IAttachmentCapable
-from app.models.schemas import Notification, NotificationResult, ChannelType
+from app.models.schemas import Notification, NotificationResult
+from app.providers.base import provider_registry
 
 
+@provider_registry.auto_register
 class EmailProvider(NotificationProvider, IAttachmentCapable):
     """Mock email provider supporting attachments.
 
@@ -17,7 +19,7 @@ class EmailProvider(NotificationProvider, IAttachmentCapable):
 
     @property
     def channel_name(self) -> str:
-        return ChannelType.EMAIL.value
+        return "email"
 
     def __init__(self):
         self._attachments: list[dict] = []

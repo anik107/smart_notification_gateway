@@ -4,9 +4,11 @@ from datetime import datetime
 
 from app.core.exceptions import ProviderException
 from app.core.interfaces import NotificationProvider
-from app.models.schemas import Notification, NotificationResult, ChannelType
+from app.models.schemas import Notification, NotificationResult
+from app.providers.base import provider_registry
 
 
+@provider_registry.auto_register
 class SMSProvider(NotificationProvider):
     """Mock SMS provider.
 
@@ -16,7 +18,7 @@ class SMSProvider(NotificationProvider):
 
     @property
     def channel_name(self) -> str:
-        return ChannelType.SMS.value
+        return "sms"
 
     async def send(self, notification: Notification) -> NotificationResult:
         """Mock sending an SMS via an external gateway."""

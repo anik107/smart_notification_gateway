@@ -6,14 +6,12 @@ from app.core.exceptions import (
     ProviderException,
     UserNotFoundException
 )
-from app.core.interfaces import IUserPreferenceRepository
+from app.core.interfaces import IUserPreferenceRepository, IProviderRegistry
 from app.models.schemas import (
     Notification,
     NotificationRequest,
     NotificationResult,
-    ChannelType
 )
-from app.providers.base import provider_registry
 
 
 class NotificationService:
@@ -23,12 +21,17 @@ class NotificationService:
     validate preferences -> select provider -> send. It does not format messages
     (providers do) nor does it access data directly (repositories do).
 
-    Dependency Inversion Principle: Depends on IUserPreferenceRepository abstraction,
-    injected via constructor.
+    Dependency Inversion Principle: Depends on IUserPreferenceRepository and
+    IProviderRegistry abstractions, both injected via constructor.
     """
 
-    def __init__(self, preference_repo: IUserPreferenceRepository):
+    def __init__(
+        self,
+        preference_repo: IUserPreferenceRepository,
+        provider_registry: IProviderRegistry,
+    ):
         self._preference_repo = preference_repo
+        self._provider_registry = provider_registry
 
     async def send_notification(
         self,
@@ -49,16 +52,16 @@ class NotificationService:
         """
         # 1. Validate user and channel preference
         is_enabled = await self._preference_repo.is_channel_enabled(
-            request.user_id, request.channel.value
+            request.user_id, request.channel
         )
         if not is_enabled:
             raise ChannelDisabledException(
-                f"Channel '{request.channel.value}' is disabled for user {request.user_id}"
+                f"Channel '{request.channel}' is disabled for user {request.user_id}"
             )
 
         # 2. Resolve recipient address
         recipient_address = await self._preference_repo.get_contact_address(
-            request.user_id, request.channel.value
+            request.user_id, request.channel
         )
 
         # 3. Build notification domain object
@@ -73,7 +76,7 @@ class NotificationService:
         )
 
         # 4. Resolve provider and send
-        provider = provider_registry.get_provider(request.channel.value)
+        provider = self._provider_registry.get_provider(request.channel)
         result = await provider.send(notification)
 
         return [result]
@@ -111,13 +114,13 @@ class NotificationService:
                 notification = Notification(
                     recipient_id=user_id,
                     recipient_address=recipient_address,
-                    channel=ChannelType(channel_name),
+                    channel=channel_name,
                     subject=subject,
                     body=body,
                     priority=priority
                 )
 
-                provider = provider_registry.get_provider(channel_name)
+                provider = self._provider_registry.get_provider(channel_name)
                 result = await provider.send(notification)
                 results.append(result)
             except (ProviderException, ValueError) as exc:

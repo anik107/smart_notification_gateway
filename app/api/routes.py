@@ -1,17 +1,11 @@
 """FastAPI routes for the notification gateway."""
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 
 from app.api.dependencies import get_notification_service
-from app.core.exceptions import (
-    ChannelDisabledException,
-    NotificationException,
-    ProviderException,
-    UserNotFoundException
-)
+from app.core.exceptions import NotificationException
 from app.models.schemas import (
     NotificationRequest,
     NotificationResponse,
-    NotificationResult
 )
 from app.services.notification_service import NotificationService
 
@@ -33,7 +27,7 @@ async def send_notification(
 
     return NotificationResponse(
         status="queued",
-        message=f"Notification queued for user {request.user_id} via {request.channel.value}"
+        message=f"Notification queued for user {request.user_id} via {request.channel}"
     )
 
 

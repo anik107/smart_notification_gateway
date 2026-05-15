@@ -1,11 +1,12 @@
 """FastAPI dependency injection configuration.
 
-Dependency Inversion Principle: All concrete dependencies are wired here.
-The rest of the application depends on abstractions (interfaces).
+Dependency Inversion Principle: All concrete dependencies are wired here
+at the composition root. The rest of the application depends on abstractions.
 """
-from fastapi import Request
+from fastapi import Depends
 
-from app.core.interfaces import IUserPreferenceRepository
+from app.core.interfaces import IUserPreferenceRepository, IProviderRegistry
+from app.providers.base import provider_registry
 from app.repositories.user_preference_repository import MockUserPreferenceRepository
 from app.services.notification_service import NotificationService
 
@@ -25,8 +26,21 @@ def get_user_preference_repository() -> IUserPreferenceRepository:
     return _preference_repo_singleton
 
 
+def get_provider_registry() -> IProviderRegistry:
+    """Factory for the provider registry.
+
+    Returns the global registry instance typed as the abstraction so
+    consumers never depend on the concrete ProviderRegistry class.
+    """
+    return provider_registry
+
+
 def get_notification_service(
-    repo: IUserPreferenceRepository = get_user_preference_repository()
+    repo: IUserPreferenceRepository = Depends(get_user_preference_repository),
+    registry: IProviderRegistry = Depends(get_provider_registry),
 ) -> NotificationService:
-    """Factory for NotificationService with injected repository."""
-    return NotificationService(preference_repo=repo)
+    """Factory for NotificationService with all dependencies injected."""
+    return NotificationService(
+        preference_repo=repo,
+        provider_registry=registry,
+    )
