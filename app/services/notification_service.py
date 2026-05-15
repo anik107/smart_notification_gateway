@@ -111,14 +111,17 @@ class NotificationService:
                     user_id, channel_name
                 )
 
-                notification = Notification(
-                    recipient_id=user_id,
-                    recipient_address=recipient_address,
-                    channel=channel_name,
-                    subject=subject,
-                    body=body,
-                    priority=priority
-                )
+                notification_kwargs = {
+                    "recipient_id": user_id,
+                    "recipient_address": recipient_address,
+                    "channel": channel_name,
+                    "subject": subject,
+                    "body": body,
+                }
+                if priority is not None:
+                    notification_kwargs["priority"] = priority
+
+                notification = Notification(**notification_kwargs)
 
                 provider = self._provider_registry.get_provider(channel_name)
                 result = await provider.send(notification)
